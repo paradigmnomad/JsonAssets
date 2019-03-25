@@ -122,6 +122,13 @@ namespace JsonAssets
             this.loadData(contentPack);
         }
 
+        private Dictionary<string, IContentPack> dupObjects = new Dictionary<string, IContentPack>();
+        private Dictionary<string, IContentPack> dupCrops = new Dictionary<string, IContentPack>();
+        private Dictionary<string, IContentPack> dupFruitTrees = new Dictionary<string, IContentPack>();
+        private Dictionary<string, IContentPack> dupBigCraftables = new Dictionary<string, IContentPack>();
+        private Dictionary<string, IContentPack> dupHats = new Dictionary<string, IContentPack>();
+        private Dictionary<string, IContentPack> dupWeapons = new Dictionary<string, IContentPack>();
+
         private readonly Regex SeasonLimiter = new Regex("(z(?: spring| summer| fall| winter){2,4})", RegexOptions.IgnoreCase | RegexOptions.Compiled);
         private void loadData(IContentPack contentPack)
         {
@@ -149,6 +156,12 @@ namespace JsonAssets
                     // save ring
                     if (obj.Category == ObjectData.Category_.Ring)
                         this.myRings.Add(obj);
+
+                    // Duplicate check
+                    if (dupObjects.ContainsKey(obj.Name))
+                        Log.error($"Duplicate object: {obj.Name} just added by {contentPack.Manifest.Name}, already added by {dupObjects[obj.Name].Manifest.Name}!");
+                    else
+                        dupObjects[obj.Name] = contentPack;
                 }
             }
 
@@ -219,6 +232,12 @@ namespace JsonAssets
                     }
 
                     objects.Add(crop.seed);
+
+                    // Duplicate check
+                    if (dupCrops.ContainsKey(crop.Name))
+                        Log.error($"Duplicate crop: {crop.Name} just added by {contentPack.Manifest.Name}, already added by {dupCrops[crop.Name].Manifest.Name}!");
+                    else
+                        dupCrops[crop.Name] = contentPack;
                 }
             }
 
@@ -255,6 +274,12 @@ namespace JsonAssets
                         DescriptionLocalization = tree.SaplingDescriptionLocalization
                     };
                     objects.Add(tree.sapling);
+
+                    // Duplicate check
+                    if (dupFruitTrees.ContainsKey(tree.Name))
+                        Log.error($"Duplicate fruit tree: {tree.Name} just added by {contentPack.Manifest.Name}, already added by {dupFruitTrees[tree.Name].Manifest.Name}!");
+                    else
+                        dupFruitTrees[tree.Name] = contentPack;
                 }
             }
 
@@ -274,6 +299,12 @@ namespace JsonAssets
                     // save craftable
                     craftable.texture = contentPack.LoadAsset<Texture2D>($"{relativePath}/big-craftable.png");
                     bigCraftables.Add(craftable);
+
+                    // Duplicate check
+                    if (dupBigCraftables.ContainsKey(craftable.Name))
+                        Log.error($"Duplicate big craftable: {craftable.Name} just added by {contentPack.Manifest.Name}, already added by {dupBigCraftables[craftable.Name].Manifest.Name}!");
+                    else
+                        dupBigCraftables[craftable.Name] = contentPack;
                 }
             }
 
@@ -293,6 +324,12 @@ namespace JsonAssets
                     // save object
                     hat.texture = contentPack.LoadAsset<Texture2D>($"{relativePath}/hat.png");
                     hats.Add(hat);
+
+                    // Duplicate check
+                    if (dupHats.ContainsKey(hat.Name))
+                        Log.error($"Duplicate hat: {hat.Name} just added by {contentPack.Manifest.Name}, already added by {dupHats[hat.Name].Manifest.Name}!");
+                    else
+                        dupBigCraftables[hat.Name] = contentPack;
                 }
             }
 
@@ -313,12 +350,19 @@ namespace JsonAssets
                     // save object
                     weapon.texture = contentPack.LoadAsset<Texture2D>($"{relativePath}/weapon.png");
                     weapons.Add(weapon);
+
+                    // Duplicate check
+                    if (dupWeapons.ContainsKey(weapon.Name))
+                        Log.error($"Duplicate weapon: {weapon.Name} just added by {contentPack.Manifest.Name}, already added by {dupWeapons[weapon.Name].Manifest.Name}!");
+                    else
+                        dupBigCraftables[weapon.Name] = contentPack;
                 }
             }
         }
 
         private void resetAtTitle()
         {
+            didInit = false;
             // When we go back to the title menu we need to reset things so things don't break when
             // going back to a save.
             clearIds(out objectIds, objects.ToList<DataNeedsId>());
@@ -336,7 +380,7 @@ namespace JsonAssets
         private void onCreated(object sender, SaveCreatedEventArgs e)
         {
             Log.debug("Loading stuff early (creation)");
-            initStuff( loadIdFiles: true );
+            initStuff( loadIdFiles: false );
         }
 
         private void onLoadStageChanged(object sender, LoadStageChangedEventArgs e)
@@ -344,16 +388,46 @@ namespace JsonAssets
             if (e.NewStage == StardewModdingAPI.Enums.LoadStage.SaveParsed)
             {
                 Log.debug("Loading stuff early (loading)");
-                initStuff( loadIdFiles: false );
+                initStuff( loadIdFiles: true );
+            }
+            else if ( e.NewStage == StardewModdingAPI.Enums.LoadStage.SaveLoadedLocations )
+            {
+                Log.debug("Fixing IDs");
+                fixIdsEverywhere();
+            }
+            else if ( e.NewStage == StardewModdingAPI.Enums.LoadStage.Loaded )
+            {
+                Log.debug("Adding default recipes");
+                foreach (var obj in objects)
+                {
+                    if (obj.Recipe != null && obj.Recipe.IsDefault && !Game1.player.knowsRecipe(obj.Name))
+                    {
+                        if (obj.Category == ObjectData.Category_.Cooking)
+                        {
+                            Game1.player.cookingRecipes.Add(obj.Name, 0);
+                        }
+                        else
+                        {
+                            Game1.player.craftingRecipes.Add(obj.Name, 0);
+                        }
+                    }
+                }
+                foreach (var big in bigCraftables)
+                {
+                    if (big.Recipe != null && big.Recipe.IsDefault && !Game1.player.knowsRecipe(big.Name))
+                    {
+                        Game1.player.craftingRecipes.Add(big.Name, 0);
+                    }
+                }
             }
         }
 
         private void clientConnected(object sender, PeerContextReceivedEventArgs e)
         {
-            if (!Context.IsMainPlayer)
+            if (!Context.IsMainPlayer && !didInit)
             {
                 Log.debug("Loading stuff early (MP client)");
-                initStuff( loadIdFiles: true );
+                initStuff( loadIdFiles: false );
             }
         }
 
@@ -478,11 +552,16 @@ namespace JsonAssets
 
             ( ( Api ) api ).InvokeAddedItemsToShop();
         }
-        
+
+        private bool didInit = false;
         private void initStuff( bool loadIdFiles )
         {
+            if (didInit)
+                return;
+            didInit = true;
+
             // load object ID mappings from save folder
-            if (!loadIdFiles)
+            if (loadIdFiles)
             {
                 IDictionary<TKey, TValue> LoadDictionary<TKey, TValue>(string filename)
                 {
@@ -498,6 +577,21 @@ namespace JsonAssets
                 oldBigCraftableIds = LoadDictionary<string, int>("ids-big-craftables.json");
                 oldHatIds = LoadDictionary<string, int>("ids-hats.json");
                 oldWeaponIds = LoadDictionary<string, int>("ids-weapons.json");
+
+                Log.trace("OLD IDS START");
+                foreach (var id in oldObjectIds)
+                    Log.trace("\tObject " + id.Key + " = " + id.Value);
+                foreach (var id in oldCropIds)
+                    Log.trace("\tCrop " + id.Key + " = " + id.Value);
+                foreach (var id in oldFruitTreeIds)
+                    Log.trace("\tFruit Tree " + id.Key + " = " + id.Value);
+                foreach (var id in oldBigCraftableIds)
+                    Log.trace("\tBigCraftable " + id.Key + " = " + id.Value);
+                foreach (var id in oldHatIds)
+                    Log.trace("\tHat " + id.Key + " = " + id.Value);
+                foreach (var id in oldWeaponIds)
+                    Log.trace("\tWeapon " + id.Key + " = " + id.Value);
+                Log.trace("OLD IDS END");
             }
 
             // assign IDs
@@ -507,34 +601,11 @@ namespace JsonAssets
             bigCraftableIds = AssignIds("big-craftables", StartingBigCraftableId, bigCraftables.ToList<DataNeedsId>());
             hatIds = AssignIds("hats", StartingHatId, hats.ToList<DataNeedsId>());
             weaponIds = AssignIds("weapons", StartingWeaponId, weapons.ToList<DataNeedsId>());
-
-            fixIdsEverywhere();
+            
             api.InvokeIdsAssigned();
 
             // init
             Helper.Content.AssetEditors.Add(new ContentInjector());
-
-            foreach (var obj in objects)
-            {
-                if (obj.Recipe != null && obj.Recipe.IsDefault && !Game1.player.knowsRecipe(obj.Name))
-                {
-                    if (obj.Category == ObjectData.Category_.Cooking)
-                    {
-                        Game1.player.cookingRecipes.Add(obj.Name, 0);
-                    }
-                    else
-                    {
-                        Game1.player.craftingRecipes.Add(obj.Name, 0);
-                    }
-                }
-            }
-            foreach (var big in bigCraftables)
-            {
-                if (big.Recipe != null && big.Recipe.IsDefault && !Game1.player.knowsRecipe(big.Name))
-                {
-                    Game1.player.craftingRecipes.Add(big.Name, 0);
-                }
-            }
         }
 
         /// <summary>Raised after the game finishes writing data to the save file (except the initial save creation).</summary>
@@ -542,6 +613,9 @@ namespace JsonAssets
         /// <param name="e">The event arguments.</param>
         private void onSaved(object sender, SavedEventArgs e)
         {
+            if (!Directory.Exists(Path.Combine(Constants.CurrentSavePath, "JsonAssets")))
+                Directory.CreateDirectory(Path.Combine(Constants.CurrentSavePath, "JsonAssets"));
+
             File.WriteAllText(Path.Combine(Constants.CurrentSavePath, "JsonAssets", "ids-objects.json"), JsonConvert.SerializeObject(objectIds));
             File.WriteAllText(Path.Combine(Constants.CurrentSavePath, "JsonAssets", "ids-crops.json"), JsonConvert.SerializeObject(cropIds));
             File.WriteAllText(Path.Combine(Constants.CurrentSavePath, "JsonAssets", "ids-fruittrees.json"), JsonConvert.SerializeObject(fruitTreeIds));
@@ -843,6 +917,11 @@ namespace JsonAssets
                     else if (fixId(oldWeaponIds, weaponIds, weapon.currentParentTileIndex, origWeapons))
                         items[i] = null;
                     else if (fixId(oldWeaponIds, weaponIds, weapon.currentParentTileIndex, origWeapons))
+                        items[i] = null;
+                }
+                else if ( item is Ring ring )
+                {
+                    if (fixId(oldObjectIds, objectIds, ring.indexInTileSheet, origObjects))
                         items[i] = null;
                 }
             }
