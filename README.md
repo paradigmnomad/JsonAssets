@@ -270,26 +270,130 @@ An example of a filled out gift taste can be found [here](https://pastebin.com/9
 
 ## Localization
 
-JsonAssets supports name localization without the need for a seperate or different download. These lines can be added to the bottom of their respective `json` files. Most localization is the same except "Crops have their loc. fields prefixed with"Seed", fruit trees prefixed with "Sapling"."
+JsonAssets supports name localization without the need for a seperate or different download. These lines can be added to the bottom of their respective `json` files. Most localization is the same except "Crops have their localization. fields prefixed with"Seed", fruit trees prefixed with "Sapling"."
 
-Examples:
+Below each code block is the standardized format for adding translations.
+
+For Objects:
 ```
- "NameLocalization": { "es": "spanish weapon (name)" },
-    "DescriptionLocalization": { "es": "spanish weapon (desc)" }
+"NameLocalization": { "es": "spanish weapon (name)" },
+"DescriptionLocalization": { "es": "spanish weapon (desc)" }
 ```
+
+<details>
+<summary> Objects</summary>
+  
+  ```
+  "NameLocalization": { 
+    "es": "",
+    "ko": "",
+    "de": "",
+    "fr": "",
+    "hu": "",
+    "it": "",
+    "ja": "",
+    "pt": "",
+    "ru": "",
+    "tr": "",
+    "zh": "",
+     },
+ "DescriptionLocalization": { 
+    "es": "",
+    "ko": "",
+    "de": "",
+    "fr": "",
+    "hu": "",
+    "it": "",
+    "ja": "",
+    "pt": "",
+    "ru": "",
+    "tr": "",
+    "zh": "",
+    }
+  ```
+  
+  </details>
 
 For Crops:
 ```
 "SeedNameLocalization": { "es": "spanish seed (name)" },
-    "SeedDescriptionLocalization": { "es": "spanish seed (desc)" }
+"SeedDescriptionLocalization": { "es": "spanish seed (desc)" }
 ```
 
+<details>
+<summary> Crops</summary>
+  
+  ```
+  "SeedNameLocalization": { 
+    "es": "",
+    "ko": "",
+    "de": "",
+    "fr": "",
+    "hu": "",
+    "it": "",
+    "ja": "",
+    "pt": "",
+    "ru": "",
+    "tr": "",
+    "zh": "",
+    },
+"SeedDescriptionLocalization": { 
+    "es": "",
+    "ko": "",
+    "de": "",
+    "fr": "",
+    "hu": "",
+    "it": "",
+    "ja": "",
+    "pt": "",
+    "ru": "",
+    "tr": "",
+    "zh": "",
+    }
+```
+    
+  </details>
+  
 For Saplings:
 ```
 "SaplingNameLocalization": { "es": "spanish ftree (name)" },
-    "SaplingDescriptionLocalization": { "es": "spanish ftree (desc)" }
+"SaplingDescriptionLocalization": { "es": "spanish ftree (desc)" }
 ```
 
+<details>
+<summary> Saplings</summary>
+  
+ ```
+  "SaplingNameLocalization": { 
+    "es": "",
+    "ko": "",
+    "de": "",
+    "fr": "",
+    "hu": "",
+    "it": "",
+    "ja": "",
+    "pt": "",
+    "ru": "",
+    "tr": "",
+    "zh": "",
+    },
+"SaplingDescriptionLocalization": { 
+    "es": "",
+    "ko": "",
+    "de": "",
+    "fr": "",
+    "hu": "",
+    "it": "",
+    "ja": "",
+    "pt": "",
+    "ru": "",
+    "tr": "",
+    "zh": "",
+    }
+ ```
+    
+  </details>
+  
 ## Converting From Legacy Format
 Before the release of SMAPI 2.5, Json Assets content packs previously needed a `content-pack.json` and had to be installed directly in the Json Assets folder. This is an outdated method and the more current `manifest.json` method should be used.
 
