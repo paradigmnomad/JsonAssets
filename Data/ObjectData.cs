@@ -1,4 +1,5 @@
-﻿using Microsoft.Xna.Framework.Graphics;
+﻿using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using StardewValley;
@@ -7,36 +8,35 @@ using SObject = StardewValley.Object;
 
 namespace JsonAssets.Data
 {
-    public class ObjectData : DataNeedsId
+    public class ObjectData : DataNeedsIdWithTexture
     {
         [JsonIgnore]
-        internal Texture2D texture;
-        [JsonIgnore]
-        internal Texture2D textureColor;
+        public Texture2D textureColor;
 
         [JsonConverter(typeof(StringEnumConverter))]
         public enum Category_
         {
-            // SDV Patcher made these static readonly, so I can't use them in the enum
-            Vegetable = -75, //SObject.VegetableCategory,
-            Fruit = -79, //SObject.FruitsCategory,
-            Flower = -80, //SObject.flowersCategory,
-            Gem = -2, //SObject.GemCategory,
-            Fish = -4, //SObject.FishCategory,
-            Egg = -5, //SObject.EggCategory,
-            Milk = -6, //SObject.MilkCategory,
-            Cooking = -7, //SObject.CookingCategory,
-            Crafting = -8, //SObject.CraftingCategory,
-            Mineral = -12, //SObject.mineralsCategory,
-            Meat = -14, //SObject.meatCategory,
-            Metal = -15, //SObject.metalResources,
-            Junk = -20, //SObject.junkCategory,
-            Syrup = -27, //SObject.syrupCategory,
-            MonsterLoot = -28, //SObject.monsterLootCategory,
-            ArtisanGoods = -26, //SObject.artisanGoodsCategory,
-            Seeds = -74, //SObject.SeedsCategory,
-            Ring = -96, //SObject.ringCategory,
-            AnimalGoods = -18, //SObject.sellAtPierresAndMarnies
+            Vegetable = SObject.VegetableCategory,
+            Fruit = SObject.FruitsCategory,
+            Flower = SObject.flowersCategory,
+            Gem = SObject.GemCategory,
+            Fish = SObject.FishCategory,
+            Egg = SObject.EggCategory,
+            Milk = SObject.MilkCategory,
+            Cooking = SObject.CookingCategory,
+            Crafting = SObject.CraftingCategory,
+            Mineral = SObject.mineralsCategory,
+            Meat = SObject.meatCategory,
+            Metal = SObject.metalResources,
+            Junk = SObject.junkCategory,
+            Syrup = SObject.syrupCategory,
+            MonsterLoot = SObject.monsterLootCategory,
+            ArtisanGoods = SObject.artisanGoodsCategory,
+            Seeds = SObject.SeedsCategory,
+            Ring = SObject.ringCategory,
+            AnimalGoods = SObject.sellAtPierresAndMarnies,
+            Greens = SObject.GreensCategory,
+            Artifact = int.MinValue, // Special case
         }
 
         public class Recipe_
@@ -46,7 +46,10 @@ namespace JsonAssets.Data
                 public object Object { get; set; }
                 public int Count { get; set; }
             }
-            // Possibly friendship option (letters, like vanilla) and/or skill levels (on levelup?)
+
+            public string SkillUnlockName { get; set; } = null;
+            public int SkillUnlockLevel { get; set; } = -1;
+
             public int ResultCount { get; set; } = 1;
             public IList<Ingredient> Ingredients { get; set; } = new List<Ingredient>();
 
@@ -62,10 +65,15 @@ namespace JsonAssets.Data
                 foreach (var ingredient in Ingredients)
                     str += Mod.instance.ResolveObjectId(ingredient.Object) + " " + ingredient.Count + " ";
                 str = str.Substring(0, str.Length - 1);
-                str += $"/what is this for?/{parent.id}/";
+                str += $"/what is this for?/{parent.id} {ResultCount}/";
                 if (parent.Category != Category_.Cooking)
                     str += "false/";
-                str += "/null"; // TODO: Requirement
+                if (SkillUnlockName?.Length > 0 && SkillUnlockLevel > 0)
+                    str += "/" + SkillUnlockName + " " + SkillUnlockLevel;
+                else
+                    str += "/null";
+                if (LocalizedContentManager.CurrentLanguageCode != LocalizedContentManager.LanguageCode.en)
+                    str += "/" + parent.LocalizedName();
                 return str;
             }
 
@@ -92,12 +100,18 @@ namespace JsonAssets.Data
             public int Attack { get; set; } = 0;
             public int Duration { get; set; } = 0;
         }
-        
+
         public string Description { get; set; }
         public Category_ Category { get; set; }
+        public string CategoryTextOverride { get; set; }
+        public Color CategoryColorOverride { get; set; } = new Color(0, 0, 0, 0);
         public bool IsColored { get; set; } = false;
 
         public int Price { get; set; }
+
+        public bool CanTrash { get; set; } = true;
+        public bool CanSell { get; set; } = true;
+        public bool CanBeGifted { get; set; } = true;
 
         public Recipe_ Recipe { get; set; }
 
@@ -122,6 +136,8 @@ namespace JsonAssets.Data
 
         public Dictionary<string, string> NameLocalization = new Dictionary<string, string>();
         public Dictionary<string, string> DescriptionLocalization = new Dictionary<string, string>();
+
+        public List<string> ContextTags = new List<string>();
 
         public string LocalizedName()
         {
@@ -150,7 +166,7 @@ namespace JsonAssets.Data
             if (Edibility != SObject.inedible)
             {
                 var itype = (int)Category;
-                var str = $"{Name}/{Price}/{Edibility}/{Category} {itype}/{LocalizedName()}/{LocalizedDescription()}/";
+                var str = $"{Name}/{Price}/{Edibility}/" + (Category == Category_.Artifact ? "Arch" : $"{Category} {itype}") + $"/{LocalizedName()}/{LocalizedDescription()}/";
                 str += (EdibleIsDrink ? "drink" : "food") + "/";
                 if (EdibleBuffs == null)
                     EdibleBuffs = new FoodBuffs_();
@@ -160,7 +176,7 @@ namespace JsonAssets.Data
             else
             {
                 var itype = (int)Category;
-                return $"{Name}/{Price}/{Edibility}/Basic {itype}/{LocalizedName()}/{LocalizedDescription()}";
+                return $"{Name}/{Price}/{Edibility}/" + (Category == Category_.Artifact ? "Arch" : $"Basic {itype}") + $"/{LocalizedName()}/{LocalizedDescription()}";
             }
         }
 

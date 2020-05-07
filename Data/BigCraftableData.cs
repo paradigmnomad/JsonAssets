@@ -5,10 +5,13 @@ using System.Collections.Generic;
 
 namespace JsonAssets.Data
 {
-    public class BigCraftableData : DataNeedsId
+    public class BigCraftableData : DataNeedsIdWithTexture
     {
         [JsonIgnore]
-        internal Texture2D texture;
+        public Texture2D[] extraTextures;
+
+        public bool ReserveNextIndex { get; set; } = false; // Deprecated
+        public int ReserveExtraIndexCount { get; set; } = 0;
 
         public class Recipe_
         {
@@ -17,7 +20,10 @@ namespace JsonAssets.Data
                 public object Object { get; set; }
                 public int Count { get; set; }
             }
-            // Possibly friendship option (letters, like vanilla) and/or skill levels (on levelup?)
+
+            public string SkillUnlockName { get; set; } = null;
+            public int SkillUnlockLevel { get; set; } = -1;
+
             public int ResultCount { get; set; } = 1;
             public IList<Ingredient> Ingredients { get; set; } = new List<Ingredient>();
 
@@ -33,7 +39,13 @@ namespace JsonAssets.Data
                 foreach (var ingredient in Ingredients)
                     str += Mod.instance.ResolveObjectId(ingredient.Object) + " " + ingredient.Count + " ";
                 str = str.Substring(0, str.Length - 1);
-                str += $"/what is this for?/{parent.id}/true/null";
+                str += $"/what is this for?/{parent.id} {ResultCount}/true/";
+                if (SkillUnlockName?.Length > 0 && SkillUnlockLevel > 0)
+                    str += SkillUnlockName + " " + SkillUnlockLevel;
+                else
+                    str += "null";
+                if (LocalizedContentManager.CurrentLanguageCode != LocalizedContentManager.LanguageCode.en)
+                    str += "/" + parent.LocalizedName();
                 return str;
             }
 
@@ -45,7 +57,7 @@ namespace JsonAssets.Data
                 return str;
             }
         }
-        
+
         public string Description { get; set; }
 
         public int Price { get; set; }
@@ -86,9 +98,10 @@ namespace JsonAssets.Data
 
         internal string GetCraftableInformation()
         {
-            string str = $"{Name}/{Price}/-300/Crafting -9/{LocalizedDescription()}/true/true/0/{LocalizedName()}";
+            string str = $"{Name}/{Price}/-300/Crafting -9/{LocalizedDescription()}/true/true/0";
             if (ProvidesLight)
                 str += "/true";
+            str += $"/{LocalizedName()}";
             return str;
         }
 

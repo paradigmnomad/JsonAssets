@@ -1,47 +1,36 @@
-﻿using Microsoft.Xna.Framework.Graphics;
+﻿using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using StardewValley;
-using StardewValley.Tools;
+using System;
 using System.Collections.Generic;
 using SObject = StardewValley.Object;
 
 namespace JsonAssets.Data
 {
-    public class WeaponData : DataNeedsIdWithTexture
+    public class BootsData : DataSeparateTextureIndex
     {
-        [JsonConverter(typeof(StringEnumConverter))]
-        public enum Type_
-        {
-            Dagger = MeleeWeapon.dagger,
-            Club = MeleeWeapon.club,
-            Sword = MeleeWeapon.defenseSword,
-        }
+        [JsonIgnore]
+        public Texture2D texture;
+
+        [JsonIgnore]
+        public Texture2D textureColor;
         
         public string Description { get; set; }
-        public Type_ Type { get; set; }
 
-        public int MinimumDamage { get; set; }
-        public int MaximumDamage { get; set; }
-        public double Knockback { get; set; }
-        public int Speed { get; set; }
-        public int Accuracy { get; set; }
-        public int Defense { get; set; }
-        public int MineDropVar { get; set; }
-        public int MineDropMinimumLevel { get; set; }
-        public int ExtraSwingArea { get; set; }
-        public double CritChance { get; set; }
-        public double CritMultiplier { get; set; }
-
+        public int Price { get; set; }
+        
         public bool CanPurchase { get; set; } = false;
         public int PurchasePrice { get; set; }
-        public string PurchaseFrom { get; set; } = "Pierre";
+        public string PurchaseFrom { get; set; } = "Marlon";
         public IList<string> PurchaseRequirements { get; set; } = new List<string>();
-
-        public bool CanTrash { get; set; } = true;
 
         public Dictionary<string, string> NameLocalization = new Dictionary<string, string>();
         public Dictionary<string, string> DescriptionLocalization = new Dictionary<string, string>();
+        
+        public int Defense { get; set; }
+        public int Immunity { get; set; }
 
         public string LocalizedName()
         {
@@ -63,19 +52,20 @@ namespace JsonAssets.Data
             return DescriptionLocalization[currLang.ToString()];
         }
 
-        public int GetWeaponId() { return id; }
-
-        internal string GetWeaponInformation()
-        {
-            return $"{Name}/{LocalizedDescription()}/{MinimumDamage}/{MaximumDamage}/{Knockback}/{Speed}/{Accuracy}/{Defense}/{(int)Type}/{MineDropVar}/{MineDropMinimumLevel}/{ExtraSwingArea}/{CritChance}/{CritMultiplier}/{LocalizedName()}";
-        }
-
+        public int GetObjectId() { return id; }
+        public int GetTextureIndex() { return textureIndex; }
+        
         internal string GetPurchaseRequirementString()
         {
             var str = $"1234567890";
             foreach (var cond in PurchaseRequirements)
                 str += $"/{cond}";
             return str;
+        }
+
+        internal string GetBootsInformation()
+        {
+            return $"{Name}/{LocalizedDescription()}/{Price}/{Defense}/{Immunity}/{textureIndex}/{LocalizedName()}";
         }
     }
 }
