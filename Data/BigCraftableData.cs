@@ -32,6 +32,7 @@ namespace JsonAssets.Data
             public int PurchasePrice { get; set; }
             public string PurchaseFrom { get; set; } = "Gus";
             public IList<string> PurchaseRequirements { get; set; } = new List<string>();
+            public IList<PurchaseData> AdditionalPurchaseData { get; set; } = new List<PurchaseData>();
 
             internal string GetRecipeString( BigCraftableData parent )
             {
@@ -51,6 +52,8 @@ namespace JsonAssets.Data
 
             internal string GetPurchaseRequirementString()
             {
+                if ( PurchaseRequirements == null )
+                    return "";
                 var str = $"1234567890";
                 foreach (var cond in PurchaseRequirements)
                     str += $"/{cond}";
@@ -70,6 +73,7 @@ namespace JsonAssets.Data
         public int PurchasePrice { get; set; }
         public string PurchaseFrom { get; set; } = "Pierre";
         public IList<string> PurchaseRequirements { get; set; } = new List<string>();
+        public IList<PurchaseData> AdditionalPurchaseData { get; set; } = new List<PurchaseData>();
 
         public Dictionary<string, string> NameLocalization = new Dictionary<string, string>();
         public Dictionary<string, string> DescriptionLocalization = new Dictionary<string, string>();
@@ -77,8 +81,8 @@ namespace JsonAssets.Data
         public string LocalizedName()
         {
             var currLang = LocalizedContentManager.CurrentLanguageCode;
-            if (currLang == LocalizedContentManager.LanguageCode.en)
-                return Name;
+            /*if (currLang == LocalizedContentManager.LanguageCode.en)
+                return Name;*/
             if (NameLocalization == null || !NameLocalization.ContainsKey(currLang.ToString()))
                 return Name;
             return NameLocalization[currLang.ToString()];
@@ -87,8 +91,8 @@ namespace JsonAssets.Data
         public string LocalizedDescription()
         {
             var currLang = LocalizedContentManager.CurrentLanguageCode;
-            if (currLang == LocalizedContentManager.LanguageCode.en)
-                return Description;
+            /*if (currLang == LocalizedContentManager.LanguageCode.en)
+                return Description;*/
             if (DescriptionLocalization == null || !DescriptionLocalization.ContainsKey(currLang.ToString()))
                 return Description;
             return DescriptionLocalization[currLang.ToString()];
@@ -107,6 +111,8 @@ namespace JsonAssets.Data
 
         internal string GetPurchaseRequirementString()
         {
+            if ( PurchaseRequirements == null )
+                return "";
             var str = $"1234567890";
             foreach (var cond in PurchaseRequirements)
                 str += $"/{cond}";

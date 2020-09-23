@@ -17,6 +17,7 @@ using StardewModdingAPI;
 using StardewModdingAPI.Events;
 using StardewValley;
 using StardewValley.Buildings;
+using StardewValley.Characters;
 using StardewValley.Locations;
 using StardewValley.Menus;
 using StardewValley.Network;
@@ -53,11 +54,15 @@ namespace JsonAssets
             helper.Events.Multiplayer.PeerContextReceived += clientConnected;
 
             helper.Content.AssetEditors.Add(content1 = new ContentInjector1());
+            helper.Content.AssetLoaders.Add( content1 );
 
+            SpaceCore.TileSheetExtensions.RegisterExtendedTileSheet( "Maps\\springobjects", 16 );
+            SpaceCore.TileSheetExtensions.RegisterExtendedTileSheet("TileSheets\\Craftables", 32);
             SpaceCore.TileSheetExtensions.RegisterExtendedTileSheet("TileSheets\\crops", 32);
             SpaceCore.TileSheetExtensions.RegisterExtendedTileSheet("TileSheets\\fruitTrees", 80);
             SpaceCore.TileSheetExtensions.RegisterExtendedTileSheet("Characters\\Farmer\\shirts", 32);
             SpaceCore.TileSheetExtensions.RegisterExtendedTileSheet("Characters\\Farmer\\pants", 688);
+            SpaceCore.TileSheetExtensions.RegisterExtendedTileSheet("Characters\\Farmer\\hats", 80);
 
             try
             {
@@ -125,6 +130,8 @@ namespace JsonAssets
                     original: AccessTools.Method(typeof(Item), nameof(Item.canBeTrashed)),
                     postfix: new HarmonyMethod(typeof(ItemPatches), nameof(ItemPatches.CanBeTrashed_Postfix))
                 );
+                
+                harmony.PatchAll();
             }
             catch (Exception e)
             {
@@ -211,6 +218,53 @@ namespace JsonAssets
         {
             objects.Add(obj);
 
+            if ( obj.Recipe != null && obj.Recipe.CanPurchase )
+            {
+                shopData.Add( new ShopDataEntry()
+                {
+                    PurchaseFrom = obj.Recipe.PurchaseFrom,
+                    Price = obj.Recipe.PurchasePrice,
+                    PurchaseRequirements = obj.Recipe.GetPurchaseRequirementString(),
+                    Object = () => new StardewValley.Object( obj.id, 1, true, obj.Recipe.PurchasePrice, 0 ),
+                } );
+                if ( obj.Recipe.AdditionalPurchaseData != null )
+                {
+                    foreach ( var entry in obj.Recipe.AdditionalPurchaseData )
+                    {
+                        shopData.Add( new ShopDataEntry()
+                        {
+                            PurchaseFrom = entry.PurchaseFrom,
+                            Price = entry.PurchasePrice,
+                            PurchaseRequirements = entry.GetPurchaseRequirementString(),
+                            Object = () => new StardewValley.Object( obj.id, 1, true, entry.PurchasePrice, 0 ),
+                        } );
+                    }
+                }
+            }
+            if ( obj.CanPurchase )
+            {
+                shopData.Add( new ShopDataEntry()
+                {
+                    PurchaseFrom = obj.PurchaseFrom,
+                    Price = obj.PurchasePrice,
+                    PurchaseRequirements = obj.GetPurchaseRequirementString(),
+                    Object = () => new StardewValley.Object( obj.id, int.MaxValue, false, obj.PurchasePrice, 0 ),
+                } );
+                if ( obj.AdditionalPurchaseData != null )
+                {
+                    foreach ( var entry in obj.AdditionalPurchaseData )
+                    {
+                        shopData.Add( new ShopDataEntry()
+                        {
+                            PurchaseFrom = entry.PurchaseFrom,
+                            Price = entry.PurchasePrice,
+                            PurchaseRequirements = entry.GetPurchaseRequirementString(),
+                            Object = () => new StardewValley.Object( obj.id, int.MaxValue, false, entry.PurchasePrice, 0 ),
+                        } );
+                    }
+                }
+            }
+
             // save ring
             if (obj.Category == ObjectData.Category_.Ring)
                 this.myRings.Add(obj);
@@ -242,6 +296,7 @@ namespace JsonAssets
                 PurchaseFrom = crop.SeedPurchaseFrom,
                 PurchasePrice = crop.SeedPurchasePrice,
                 PurchaseRequirements = crop.SeedPurchaseRequirements ?? new List<string>(),
+                AdditionalPurchaseData = crop.SeedAdditionalPurchaseData ?? new List<PurchaseData>(),
                 NameLocalization = crop.SeedNameLocalization,
                 DescriptionLocalization = crop.SeedDescriptionLocalization
             };
@@ -281,6 +336,30 @@ namespace JsonAssets
                     crop.seed.PurchaseRequirements.Add(strtrimstart);
                 }
             }
+            
+            if ( crop.seed.CanPurchase )
+            {
+                shopData.Add( new ShopDataEntry()
+                {
+                    PurchaseFrom = crop.seed.PurchaseFrom,
+                    Price = crop.seed.PurchasePrice,
+                    PurchaseRequirements = crop.seed.GetPurchaseRequirementString(),
+                    Object = () => new StardewValley.Object( crop.seed.id, int.MaxValue, false, crop.seed.PurchasePrice ),
+                } );
+                if ( crop.seed.AdditionalPurchaseData != null )
+                {
+                    foreach ( var entry in crop.seed.AdditionalPurchaseData )
+                    {
+                        shopData.Add( new ShopDataEntry()
+                        {
+                            PurchaseFrom = entry.PurchaseFrom,
+                            Price = entry.PurchasePrice,
+                            PurchaseRequirements = crop.seed.GetPurchaseRequirementString(),
+                            Object = () => new StardewValley.Object( crop.seed.id, int.MaxValue, false, entry.PurchasePrice, 0 ),
+                        } );
+                    }
+                }
+            }
 
             // Duplicate check
             if (dupCrops.ContainsKey(crop.Name))
@@ -315,10 +394,35 @@ namespace JsonAssets
                 PurchaseRequirements = tree.SaplingPurchaseRequirements,
                 PurchaseFrom = tree.SaplingPurchaseFrom,
                 PurchasePrice = tree.SaplingPurchasePrice,
+                AdditionalPurchaseData = tree.SaplingAdditionalPurchaseData,
                 NameLocalization = tree.SaplingNameLocalization,
                 DescriptionLocalization = tree.SaplingDescriptionLocalization
             };
             objects.Add(tree.sapling);
+
+            if ( tree.sapling.CanPurchase )
+            {
+                shopData.Add( new ShopDataEntry()
+                {
+                    PurchaseFrom = tree.sapling.PurchaseFrom,
+                    Price = tree.sapling.PurchasePrice,
+                    PurchaseRequirements = tree.sapling.GetPurchaseRequirementString(),
+                    Object = () => new StardewValley.Object( Vector2.Zero, tree.sapling.id, int.MaxValue ),
+                } );
+                if ( tree.sapling.AdditionalPurchaseData != null )
+                {
+                    foreach ( var entry in tree.sapling.AdditionalPurchaseData )
+                    {
+                        shopData.Add( new ShopDataEntry()
+                        {
+                            PurchaseFrom = entry.PurchaseFrom,
+                            Price = entry.PurchasePrice,
+                            PurchaseRequirements = tree.sapling.GetPurchaseRequirementString(),
+                            Object = () => new StardewValley.Object( tree.sapling.id, 1, true, tree.sapling.PurchasePrice, 0 ),
+                        } );
+                    }
+                }
+            }
 
             // Duplicate check
             if (dupFruitTrees.ContainsKey(tree.Name))
@@ -335,6 +439,53 @@ namespace JsonAssets
         {
             bigCraftables.Add(craftable);
 
+            if ( craftable.Recipe != null && craftable.Recipe.CanPurchase )
+            {
+                shopData.Add( new ShopDataEntry()
+                {
+                    PurchaseFrom = craftable.Recipe.PurchaseFrom,
+                    Price = craftable.Recipe.PurchasePrice,
+                    PurchaseRequirements = craftable.Recipe.GetPurchaseRequirementString(),
+                    Object = () => new StardewValley.Object( Vector2.Zero, craftable.id, true ),
+                } );
+                if ( craftable.Recipe.AdditionalPurchaseData != null )
+                {
+                    foreach ( var entry in craftable.Recipe.AdditionalPurchaseData )
+                    {
+                        shopData.Add( new ShopDataEntry()
+                        {
+                            PurchaseFrom = entry.PurchaseFrom,
+                            Price = entry.PurchasePrice,
+                            PurchaseRequirements = entry.GetPurchaseRequirementString(),
+                            Object = () => new StardewValley.Object( Vector2.Zero, craftable.id, true ),
+                        } );
+                    }
+                }
+            }
+            if ( craftable.CanPurchase )
+            {
+                shopData.Add( new ShopDataEntry()
+                {
+                    PurchaseFrom = craftable.PurchaseFrom,
+                    Price = craftable.PurchasePrice,
+                    PurchaseRequirements = craftable.GetPurchaseRequirementString(),
+                    Object = () => new StardewValley.Object( Vector2.Zero, craftable.id, false ),
+                } );
+                if ( craftable.AdditionalPurchaseData != null )
+                {
+                    foreach ( var entry in craftable.AdditionalPurchaseData )
+                    {
+                        shopData.Add( new ShopDataEntry()
+                        {
+                            PurchaseFrom = entry.PurchaseFrom,
+                            Price = entry.PurchasePrice,
+                            PurchaseRequirements = entry.GetPurchaseRequirementString(),
+                            Object = () => new StardewValley.Object( Vector2.Zero, craftable.id, false ),
+                        } );
+                    }
+                }
+            }
+
             // Duplicate check
             if (dupBigCraftables.ContainsKey(craftable.Name))
                 Log.error($"Duplicate big craftable: {craftable.Name} just added by {source.Name}, already added by {dupBigCraftables[craftable.Name].Name}!");
@@ -350,6 +501,17 @@ namespace JsonAssets
         {
             hats.Add(hat);
 
+            if ( hat.CanPurchase )
+            {
+                shopData.Add( new ShopDataEntry()
+                {
+                    PurchaseFrom = "HatMouse",
+                    Price = hat.PurchasePrice,
+                    PurchaseRequirements = "",
+                    Object = () => new Hat( hat.id ),
+                } );
+            }
+
             // Duplicate check
             if (dupHats.ContainsKey(hat.Name))
                 Log.error($"Duplicate hat: {hat.Name} just added by {source.Name}, already added by {dupHats[hat.Name].Name}!");
@@ -364,6 +526,30 @@ namespace JsonAssets
         public void RegisterWeapon(IManifest source, WeaponData weapon)
         {
             weapons.Add(weapon);
+
+            if ( weapon.CanPurchase )
+            {
+                shopData.Add( new ShopDataEntry()
+                {
+                    PurchaseFrom = weapon.PurchaseFrom,
+                    Price = weapon.PurchasePrice,
+                    PurchaseRequirements = weapon.GetPurchaseRequirementString(),
+                    Object = () => new MeleeWeapon(weapon.id)
+                } );
+                if ( weapon.AdditionalPurchaseData != null )
+                {
+                    foreach ( var entry in weapon.AdditionalPurchaseData )
+                    {
+                        shopData.Add( new ShopDataEntry()
+                        {
+                            PurchaseFrom = entry.PurchaseFrom,
+                            Price = entry.PurchasePrice,
+                            PurchaseRequirements = weapon.GetPurchaseRequirementString(),
+                            Object = () => new MeleeWeapon( weapon.id )
+                        } );
+                    }
+                }
+            }
 
             // Duplicate check
             if (dupWeapons.ContainsKey(weapon.Name))
@@ -414,6 +600,31 @@ namespace JsonAssets
         public void RegisterBoots(IManifest source, BootsData boots)
         {
             bootss.Add(boots);
+            
+            if ( boots.CanPurchase )
+            {
+                shopData.Add( new ShopDataEntry()
+                {
+                    PurchaseFrom = boots.PurchaseFrom,
+                    Price = boots.PurchasePrice,
+                    PurchaseRequirements = boots.GetPurchaseRequirementString(),
+                    Object = () => new Boots( boots.id )
+                } );
+
+                if ( boots.AdditionalPurchaseData != null )
+                {
+                    foreach ( var entry in boots.AdditionalPurchaseData )
+                    {
+                        shopData.Add( new ShopDataEntry()
+                        {
+                            PurchaseFrom = entry.PurchaseFrom,
+                            Price = entry.PurchasePrice,
+                            PurchaseRequirements = boots.GetPurchaseRequirementString(),
+                            Object = () => new Boots( boots.id )
+                        } );
+                    }
+                }
+            }
 
             // Duplicate check
             if (dupBoots.ContainsKey(boots.Name))
@@ -424,6 +635,54 @@ namespace JsonAssets
             if (!bootsByContentPack.ContainsKey(source))
                 bootsByContentPack.Add(source, new List<string>());
             bootsByContentPack[source].Add(boots.Name);
+        }
+
+        public void RegisterFence(IManifest source, FenceData fence)
+        {
+            fences.Add( fence );
+
+            Func<IList<FenceData.Recipe_.Ingredient>, IList<ObjectData.Recipe_.Ingredient>> convertIngredients = (ingredients) =>
+            {
+                var ret = new List<ObjectData.Recipe_.Ingredient>();
+                foreach ( var ingred in ingredients )
+                {
+                    ret.Add( new ObjectData.Recipe_.Ingredient()
+                    {
+                        Object = ingred.Object,
+                        Count = ingred.Count,
+                    } );
+                }
+                return ret;
+            };
+
+            RegisterObject( source, fence.correspondingObject = new ObjectData()
+            {
+                texture = fence.objectTexture,
+                Name = fence.Name,
+                Description = fence.Description,
+                Category = ObjectData.Category_.Crafting,
+                Price = fence.Price,
+                Recipe = fence.Recipe == null ? null : new ObjectData.Recipe_()
+                {
+                    SkillUnlockName = fence.Recipe.SkillUnlockName,
+                    SkillUnlockLevel = fence.Recipe.SkillUnlockLevel,
+                    ResultCount = fence.Recipe.ResultCount,
+                    Ingredients = convertIngredients( fence.Recipe.Ingredients ),
+                    IsDefault = fence.Recipe.IsDefault,
+                    CanPurchase = fence.Recipe.CanPurchase,
+                    PurchasePrice = fence.Recipe.PurchasePrice,
+                    PurchaseFrom = fence.Recipe.PurchaseFrom,
+                    PurchaseRequirements = fence.Recipe.PurchaseRequirements,
+                    AdditionalPurchaseData = fence.Recipe.AdditionalPurchaseData,
+                },
+                CanPurchase = fence.CanPurchase,
+                PurchasePrice = fence.PurchasePrice,
+                PurchaseFrom = fence.PurchaseFrom,
+                PurchaseRequirements = fence.PurchaseRequirements,
+                AdditionalPurchaseData = fence.AdditionalPurchaseData,
+                NameLocalization = fence.NameLocalization,
+                DescriptionLocalization = fence.DescriptionLocalization,
+            } );
         }
 
         private Dictionary<string, IManifest> dupObjects = new Dictionary<string, IManifest>();
@@ -650,6 +909,25 @@ namespace JsonAssets
                     RegisterBoots(contentPack.Manifest, boots);
                 }
             }
+
+            // Load boots
+            DirectoryInfo fencesDir = new DirectoryInfo(Path.Combine(contentPack.DirectoryPath, "Fences"));
+            if (fencesDir.Exists)
+            {
+                foreach (DirectoryInfo dir in fencesDir.EnumerateDirectories())
+                {
+                    string relativePath = $"Fences/{dir.Name}";
+
+                    // load data
+                    FenceData fence = contentPack.ReadJsonFile<FenceData>($"{relativePath}/fence.json");
+                    if (fence == null || (fence.DisableWithMod != null && Helper.ModRegistry.IsLoaded(fence.DisableWithMod)) || (fence.EnableWithMod != null && !Helper.ModRegistry.IsLoaded(fence.EnableWithMod)))
+                        continue;
+
+                    fence.texture = contentPack.LoadAsset<Texture2D>($"{relativePath}/fence.png" );
+                    fence.objectTexture = contentPack.LoadAsset<Texture2D>($"{relativePath}/object.png" );
+                    RegisterFence( contentPack.Manifest, fence );
+                }
+            }
         }
 
         private void resetAtTitle()
@@ -772,6 +1050,8 @@ namespace JsonAssets
             }
         }
 
+        public List<ShopDataEntry> shopData = new List<ShopDataEntry>();
+
         /// <summary>Raised after a game menu is opened, closed, or replaced.</summary>
         /// <param name="sender">The event sender.</param>
         /// <param name="e">The event arguments.</param>
@@ -794,123 +1074,30 @@ namespace JsonAssets
             if (menu == null || (portraitPerson == null || portraitPerson == "") && !hatMouse)
                 return;
 
-            //if (menu.portraitPerson.name == "Pierre")
+            Log.trace( $"Adding objects to {portraitPerson}'s shop" );
+            var precondMeth = Helper.Reflection.GetMethod(Game1.currentLocation, "checkEventPrecondition");
+            var forSale = menu.forSale;
+            var itemPriceAndStock = menu.itemPriceAndStock;
+
+            foreach ( var entry in shopData )
             {
-                Log.trace($"Adding objects to {portraitPerson}'s shop");
+                if ( entry.PurchaseFrom != portraitPerson || ( entry.PurchaseFrom == "HatMouse" && !hatMouse ) )
+                    continue;
 
-                var forSale = Helper.Reflection.GetField<List<ISalable>>(menu, "forSale").GetValue();
-                var itemPriceAndStock = Helper.Reflection.GetField<Dictionary<ISalable, int[]>>(menu, "itemPriceAndStock").GetValue();
+                if ( !string.IsNullOrEmpty( entry.PurchaseRequirements ) &&
+                     precondMeth.Invoke<int>( new object[] { entry.PurchaseRequirements } ) == -1 )
+                    continue;
 
-                var precondMeth = Helper.Reflection.GetMethod(Game1.currentLocation, "checkEventPrecondition");
-                foreach (var obj in objects)
+                var item = entry.Object();
+                forSale.Add( item );
+                int price = entry.Price;
+                if ( item is StardewValley.Object obj && obj.Category == StardewValley.Object.SeedsCategory )
                 {
-                    if (obj.Recipe != null && obj.Recipe.CanPurchase)
-                    {
-                        bool add = true;
-                        // Can't use continue here or the item might not sell
-                        if (obj.Recipe.PurchaseFrom != portraitPerson || (obj.Recipe.PurchaseFrom == "HatMouse" && hatMouse))
-                            add = false;
-                        if (Game1.player.craftingRecipes.ContainsKey(obj.Name) || Game1.player.cookingRecipes.ContainsKey(obj.Name))
-                            add = false;
-                        if (obj.Recipe.PurchaseRequirements != null && obj.Recipe.PurchaseRequirements.Count > 0 &&
-                            precondMeth.Invoke<int>(new object[] { obj.Recipe.GetPurchaseRequirementString() }) == -1)
-                            add = false;
-                        if (add)
-                        {
-                            var recipeObj = new SObject(obj.id, 1, true, obj.Recipe.PurchasePrice, 0);
-                            forSale.Add(recipeObj);
-                            itemPriceAndStock.Add(recipeObj, new int[] { obj.Recipe.PurchasePrice, 1 });
-                            Log.trace($"\tAdding recipe for {obj.Name}");
-                        }
-                    }
-                    if (!obj.CanPurchase)
-                        continue;
-                    if (obj.PurchaseFrom != portraitPerson || (obj.PurchaseFrom == "HatMouse" && hatMouse))
-                        continue;
-                    if (obj.PurchaseRequirements != null && obj.PurchaseRequirements.Count > 0 &&
-                        precondMeth.Invoke<int>(new object[] { obj.GetPurchaseRequirementString() }) == -1)
-                        continue;
-                    Item item = new SObject(Vector2.Zero, obj.id, int.MaxValue);
-                    forSale.Add(item);
-                    int price = obj.PurchasePrice;
-                    if (obj.Category == ObjectData.Category_.Seeds)
-                    {
-                        price = (int)(price * Game1.MasterPlayer.difficultyModifier);
-                    }
-                    itemPriceAndStock.Add(item, new int[] { price, int.MaxValue });
-                    Log.trace($"\tAdding {obj.Name}");
+                    price = ( int ) ( price * Game1.MasterPlayer.difficultyModifier );
                 }
-                foreach (var big in bigCraftables)
-                {
-                    if (big.Recipe != null && big.Recipe.CanPurchase)
-                    {
-                        bool add = true;
-                        // Can't use continue here or the item might not sell
-                        if (big.Recipe.PurchaseFrom != portraitPerson || (big.Recipe.PurchaseFrom == "HatMouse" && hatMouse))
-                            add = false;
-                        if (Game1.player.craftingRecipes.ContainsKey(big.Name) || Game1.player.cookingRecipes.ContainsKey(big.Name))
-                            add = false;
-                        if (big.Recipe.PurchaseRequirements != null && big.Recipe.PurchaseRequirements.Count > 0 &&
-                            precondMeth.Invoke<int>(new object[] { big.Recipe.GetPurchaseRequirementString() }) == -1)
-                            add = false;
-                        if (add)
-                        {
-                            var recipeObj = new SObject(new Vector2(0, 0), big.id, true);
-                            forSale.Add(recipeObj);
-                            itemPriceAndStock.Add(recipeObj, new int[] { big.Recipe.PurchasePrice, 1 });
-                            Log.trace($"\tAdding recipe for {big.Name}");
-                        }
-                    }
-                    if (!big.CanPurchase)
-                        continue;
-                    if (big.PurchaseFrom != portraitPerson || (big.PurchaseFrom == "HatMouse" && hatMouse))
-                        continue;
-                    if (big.PurchaseRequirements != null && big.PurchaseRequirements.Count > 0 &&
-                        precondMeth.Invoke<int>(new object[] { big.GetPurchaseRequirementString() }) == -1)
-                        continue;
-                    Log.trace($"\tAdding {big.Name}");
-                    Item item = new SObject(Vector2.Zero, big.id, false);
-                    forSale.Add(item);
-                    itemPriceAndStock.Add(item, new int[] { big.PurchasePrice, int.MaxValue });
-                }
-                if (hatMouse)
-                {
-                    foreach (var hat in hats)
-                    {
-                        Item item = new Hat(hat.GetHatId());
-                        forSale.Add(item);
-                        itemPriceAndStock.Add(item, new int[] { hat.PurchasePrice, int.MaxValue });
-                        Log.trace($"\tAdding {hat.Name}");
-                    }
-                }
-                foreach (var weapon in weapons)
-                {
-                    if (!weapon.CanPurchase)
-                        continue;
-                    if (weapon.PurchaseFrom != portraitPerson || (weapon.PurchaseFrom == "HatMouse" && hatMouse))
-                        continue;
-                    if (weapon.PurchaseRequirements != null && weapon.PurchaseRequirements.Count > 0 &&
-                        precondMeth.Invoke<int>(new object[] { weapon.GetPurchaseRequirementString() }) == -1)
-                        continue;
-                    Item item = new StardewValley.Tools.MeleeWeapon(weapon.id);
-                    forSale.Add(item);
-                    itemPriceAndStock.Add(item, new int[] { weapon.PurchasePrice, int.MaxValue });
-                    Log.trace($"\tAdding {weapon.Name}");
-                }
-                foreach (var boots in bootss)
-                {
-                    if (!boots.CanPurchase)
-                        continue;
-                    if (boots.PurchaseFrom != portraitPerson || (boots.PurchaseFrom == "HatMouse" && hatMouse))
-                        continue;
-                    if (boots.PurchaseRequirements != null && boots.PurchaseRequirements.Count > 0 &&
-                        precondMeth.Invoke<int>(new object[] { boots.GetPurchaseRequirementString() }) == -1)
-                        continue;
-                    Item item = new Boots(boots.id);
-                    forSale.Add(item);
-                    itemPriceAndStock.Add(item, new int[] { boots.PurchasePrice, int.MaxValue });
-                    Log.trace($"\tAdding {boots.Name}");
-                }
+                if ( item is StardewValley.Object obj2 && obj2.IsRecipe && ( Game1.player.craftingRecipes.ContainsKey( obj2.Name ) || Game1.player.cookingRecipes.ContainsKey( obj2.Name ) ) )
+                    continue;
+                itemPriceAndStock.Add( item, new int[] { price, int.MaxValue } );
             }
 
             ((Api)api).InvokeAddedItemsToShop();
@@ -990,6 +1177,18 @@ namespace JsonAssets
 
             content1.InvalidateUsed();
             Helper.Content.AssetEditors.Add(content2 = new ContentInjector2());
+
+            // This happens here instead of with ID fixing because TMXL apparently
+            // uses the ID fixing API before ID fixing happens everywhere.
+            // Doing this here prevents some NREs (that don't show up unless you're
+            // debugging for some reason????)
+            origObjects = cloneIdDictAndRemoveOurs( Game1.objectInformation, objectIds );
+            origCrops = cloneIdDictAndRemoveOurs( Game1.content.Load<Dictionary<int, string>>( "Data\\Crops" ), cropIds );
+            origFruitTrees = cloneIdDictAndRemoveOurs( Game1.content.Load<Dictionary<int, string>>( "Data\\fruitTrees" ), fruitTreeIds );
+            origBigCraftables = cloneIdDictAndRemoveOurs( Game1.bigCraftablesInformation, bigCraftableIds );
+            origHats = cloneIdDictAndRemoveOurs( Game1.content.Load<Dictionary<int, string>>( "Data\\hats" ), hatIds );
+            origWeapons = cloneIdDictAndRemoveOurs( Game1.content.Load<Dictionary<int, string>>( "Data\\weapons" ), weaponIds );
+            origClothing = cloneIdDictAndRemoveOurs( Game1.content.Load<Dictionary<int, string>>( "Data\\ClothingInformation" ), clothingIds );
         }
 
         /// <summary>Raised after the game finishes writing data to the save file (except the initial save creation).</summary>
@@ -1058,6 +1257,7 @@ namespace JsonAssets
         internal IList<PantsData> pantss = new List<PantsData>();
         internal IList<TailoringRecipeData> tailoring = new List<TailoringRecipeData>();
         internal IList<BootsData> bootss = new List<BootsData>();
+        internal List<FenceData> fences = new List<FenceData>();
 
         internal IDictionary<string, int> objectIds;
         internal IDictionary<string, int> cropIds;
@@ -1131,7 +1331,7 @@ namespace JsonAssets
 
             Dictionary<string, int> ids = new Dictionary<string, int>();
 
-            int[] bigSkip = new int[] { 309, 310, 311, 326, 340, 434, 599, 621, 628, 629, 630, 631, 632, 633, 645 };
+            int[] bigSkip = new int[] { 309, 310, 311, 326, 340, 434, 447, 459, 599, 621, 628, 629, 630, 631, 632, 633, 645, 812 };
 
             int currId = starting;
             foreach (var d in data)
@@ -1160,8 +1360,10 @@ namespace JsonAssets
             return ids;
         }
 
-        private void AssignTextureIndices(string type, int starting, IList<DataSeparateTextureIndex> data)
+        private void AssignTextureIndices(string type, int starting, List<DataSeparateTextureIndex> data)
         {
+            data.Sort((dni1, dni2) => dni1.Name.CompareTo(dni2.Name));
+
             Dictionary<string, int> idxs = new Dictionary<string, int>();
 
             int currIdx = starting;
@@ -1197,14 +1399,6 @@ namespace JsonAssets
 
         private void fixIdsEverywhere()
         {
-            origObjects = cloneIdDictAndRemoveOurs(Game1.objectInformation, objectIds);
-            origCrops = cloneIdDictAndRemoveOurs(Game1.content.Load<Dictionary<int, string>>("Data\\Crops"), cropIds);
-            origFruitTrees = cloneIdDictAndRemoveOurs(Game1.content.Load<Dictionary<int, string>>("Data\\fruitTrees"), fruitTreeIds);
-            origBigCraftables = cloneIdDictAndRemoveOurs(Game1.bigCraftablesInformation, bigCraftableIds);
-            origHats = cloneIdDictAndRemoveOurs(Game1.content.Load<Dictionary<int, string>>("Data\\hats"), hatIds);
-            origWeapons = cloneIdDictAndRemoveOurs(Game1.content.Load<Dictionary<int, string>>("Data\\weapons"), weaponIds);
-            origClothing = cloneIdDictAndRemoveOurs(Game1.content.Load<Dictionary<int, string>>("Data\\ClothingInformation"), clothingIds);
-
             fixItemList(Game1.player.Items);
 #pragma warning disable AvoidNetField
             if (Game1.player.leftRing.Value != null && fixId(oldObjectIds, objectIds, Game1.player.leftRing.Value.parentSheetIndex, origObjects))
@@ -1248,7 +1442,7 @@ namespace JsonAssets
                     return true;
                 else if (fixId(oldWeaponIds, weaponIds, weapon.currentParentTileIndex, origWeapons))
                     return true;
-                else if (fixId(oldWeaponIds, weaponIds, weapon.currentParentTileIndex, origWeapons))
+                else if (fixId(oldWeaponIds, weaponIds, weapon.indexOfMenuItemView, origWeapons))
                     return true;
             }
             else if (item is Ring ring)
@@ -1297,6 +1491,13 @@ namespace JsonAssets
                     }
                 }
             }
+            else if ( obj is Fence fence )
+            {
+                if ( fixId( oldObjectIds, objectIds, fence.whichType, origObjects ) )
+                    return true;
+                else
+                    fence.ParentSheetIndex = -fence.whichType.Value;
+            }
             else
             {
                 if (!obj.bigCraftable.Value)
@@ -1340,23 +1541,40 @@ namespace JsonAssets
             if ( loc is Cabin cabin )
             {
                 var player = cabin.farmhand.Value;
-                fixItemList(player.Items);
+                if ( player != null )
+                {
+                    fixItemList(player.Items);
 #pragma warning disable AvoidNetField
-                if (player.leftRing.Value != null && fixId(oldObjectIds, objectIds, player.leftRing.Value.parentSheetIndex, origObjects))
-                    player.leftRing.Value = null;
-                if (player.rightRing.Value != null && fixId(oldObjectIds, objectIds, player.rightRing.Value.parentSheetIndex, origObjects))
-                    player.rightRing.Value = null;
-                if (player.hat.Value != null && fixId(oldHatIds, hatIds, player.hat.Value.which, origHats))
-                    player.hat.Value = null;
-                if (player.shirtItem.Value != null && fixId(oldClothingIds, clothingIds, player.shirtItem.Value.parentSheetIndex, origClothing))
-                    player.shirtItem.Value = null;
-                if (player.pantsItem.Value != null && fixId(oldClothingIds, clothingIds, player.pantsItem.Value.parentSheetIndex, origClothing))
-                    player.pantsItem.Value = null;
-                if (player.boots.Value != null && fixId(oldObjectIds, objectIds, player.boots.Value.parentSheetIndex, origObjects))
-                    player.boots.Value = null;
-                /*else if (player.boots.Value != null)
-                    player.boots.Value.reloadData();*/
+                    if (player.leftRing.Value != null && fixId(oldObjectIds, objectIds, player.leftRing.Value.parentSheetIndex, origObjects))
+                        player.leftRing.Value = null;
+                    if (player.rightRing.Value != null && fixId(oldObjectIds, objectIds, player.rightRing.Value.parentSheetIndex, origObjects))
+                        player.rightRing.Value = null;
+                    if (player.hat.Value != null && fixId(oldHatIds, hatIds, player.hat.Value.which, origHats))
+                        player.hat.Value = null;
+                    if (player.shirtItem.Value != null && fixId(oldClothingIds, clothingIds, player.shirtItem.Value.parentSheetIndex, origClothing))
+                        player.shirtItem.Value = null;
+                    if (player.pantsItem.Value != null && fixId(oldClothingIds, clothingIds, player.pantsItem.Value.parentSheetIndex, origClothing))
+                        player.pantsItem.Value = null;
+                    if (player.boots.Value != null && fixId(oldObjectIds, objectIds, player.boots.Value.parentSheetIndex, origObjects))
+                        player.boots.Value = null;
+                    /*else if (player.boots.Value != null)
+                        player.boots.Value.reloadData();*/
 #pragma warning restore AvoidNetField
+                }
+            }
+
+            foreach ( var npc in loc.characters )
+            {
+                if ( npc is Horse horse )
+                {
+                    if ( horse.hat.Value != null && fixId( oldHatIds, hatIds, horse.hat.Value.which, origHats ) )
+                        horse.hat.Value = null;
+                }
+                else if ( npc is Child child )
+                {
+                    if ( child.hat.Value != null && fixId( oldHatIds, hatIds, child.hat.Value.which, origHats ) )
+                        child.hat.Value = null;
+                }
             }
 
             IList<Vector2> toRemove = new List<Vector2>();
@@ -1439,6 +1657,13 @@ namespace JsonAssets
                     {
                         if (fixId(oldBigCraftableIds, bigCraftableIds, obj.parentSheetIndex, origBigCraftables))
                             toRemove.Add(objk);
+                        else if ( obj.ParentSheetIndex == 126 && obj.Quality != 0 ) // Alien rarecrow stores what ID is it is wearing here
+                        {
+                            obj.Quality--;
+                            if ( fixId( oldHatIds, hatIds, obj.quality, origHats ) )
+                                obj.Quality = 0;
+                            else obj.Quality++;
+                        }
                     }
                 }
 
@@ -1618,7 +1843,18 @@ namespace JsonAssets
             foreach (var entry in toRemove)
                 dict.Remove(entry);
             foreach (var entry in toAdd)
+            {
+                if (dict.ContainsKey(entry.Key))
+                {
+                    Log.error("Dict already has value for " + entry.Key + "!");
+                    foreach ( var obj in objects )
+                    {
+                        if (obj.id == entry.Key)
+                            Log.error("\tobj = " + obj.Name);
+                    }
+                }
                 dict.Add(entry.Key, entry.Value);
+            }
         }
 
         private void fixIdDict2(NetIntIntArrayDictionary dict)
@@ -1666,7 +1902,7 @@ namespace JsonAssets
                 }
                 else
                 {
-                    Log.verbose("Deleting missing item " + key + " with old ID " + id_);
+                    Log.trace( "Deleting missing item " + key + " with old ID " + id_);
                     return true;
                 }
             }

@@ -12,6 +12,8 @@ namespace JsonAssets.Data
         public bool ShowHair { get; set; }
         public bool IgnoreHairstyleOffset { get; set; }
 
+        public bool CanPurchase { get; set; } = true;
+
         public string Metadata { get; set; } = "";
 
         public Dictionary<string, string> NameLocalization = new Dictionary<string, string>();
@@ -20,8 +22,8 @@ namespace JsonAssets.Data
         public string LocalizedName()
         {
             var currLang = LocalizedContentManager.CurrentLanguageCode;
-            if (currLang == LocalizedContentManager.LanguageCode.en)
-                return Name;
+            /*if (currLang == LocalizedContentManager.LanguageCode.en)
+                return Name;*/
             if (NameLocalization == null || !NameLocalization.ContainsKey(currLang.ToString()))
                 return Name;
             return NameLocalization[currLang.ToString()];
@@ -30,8 +32,8 @@ namespace JsonAssets.Data
         public string LocalizedDescription()
         {
             var currLang = LocalizedContentManager.CurrentLanguageCode;
-            if (currLang == LocalizedContentManager.LanguageCode.en)
-                return Description;
+            /*if (currLang == LocalizedContentManager.LanguageCode.en)
+                return Description;*/
             if (DescriptionLocalization == null || !DescriptionLocalization.ContainsKey(currLang.ToString()))
                 return Description;
             return DescriptionLocalization[currLang.ToString()];
